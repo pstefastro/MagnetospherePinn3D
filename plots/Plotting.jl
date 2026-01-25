@@ -12,6 +12,8 @@ function plot_losses(losses)
     
 	axislegend(ax1)
 	display(GLMakie.Screen(), f1)
+
+    return f1
     # save(joinpath("figures", "losses.png"), f1)
 end
 
@@ -83,7 +85,6 @@ function plot_magnetosphere_3d(fieldlines, α1; plot_lines = true, use_lscene=fa
     # Adjust viewing angle
     
 	display(GLMakie.Screen(), f, update=false)
-	# save(joinpath("figures", "twisted_magnetosphere.png"), f, update=false)
     return f
 end
 
