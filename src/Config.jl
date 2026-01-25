@@ -5,22 +5,22 @@ function create_config()
     #                Parameters for the neural network architecture                #
     # ---------------------------------------------------------------------------- #
     :N_input => 4,
-    :N_layers => 3,
-    :N_neurons => 40,
+    :N_layers => 2,
+    :N_neurons => 20,
     :N_output => 4,
-    :N_points => 80000,
+    :N_points => 20000,
     :q_distribution => Uniform(0, 1),        # Uniform(0, 1) or Beta(3, 1)
     :rng_seed => nothing,                    # Integer or 'nothing' for random seed 
     # ---------------------------------------------------------------------------- #
     #                    Parameters for the optimization process                   #
     # ---------------------------------------------------------------------------- #
-    :N_sets => 20,
+    :N_sets => 3,
     :adam_sets => 2,
     :adam_iters => 500,
-    :quasiNewton_method => ["SSBroyden", "SSBFGS", "BFGS"],      # "SSBroyden", "SSBFGS", "BFGS"
+    :quasiNewton_method => "SSBroyden",      # "SSBroyden", "SSBFGS", "BFGS"
     :quasiNewton_iters => 500,
-    :linesearch => [HagerZhang(), MoreThuente(), BackTracking(), StrongWolfe()],           # HagerZhang() or MoreThuente() or BackTracking() or StrongWolfe()
-    :loss_g => [identity, log],                     # identity or log. Function to apply to the MSE loss function
+    :linesearch => BackTracking(),           # HagerZhang() or MoreThuente() or BackTracking() or StrongWolfe()
+    :loss_g => identity,                     # identity or log. Function to apply to the MSE loss function
     :loss_normalization => "B",              # "q", "B", "none"
     :initialize_weights_from_previous => false,
     :initialize_weights_from_file => false,

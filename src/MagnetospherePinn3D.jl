@@ -30,6 +30,9 @@
         # DrWatson functions
         dict_list,
 
+        # Utility functions
+        get_short_name,
+
         # Neural network functions
         generate_input, 
         create_neural_network, 

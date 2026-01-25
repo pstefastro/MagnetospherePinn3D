@@ -101,7 +101,7 @@ function calculate_individual_losses(q, μ, r_eq, θ_eq, ϕ_eq, ∇B, B∇α, B_
 
 end
 
-function loss_function(input, NN, Θ, st, temp_state, config)
+function loss_function(input, NN, Θ, st, config)
 	
     @unpack loss_normalization, loss_g, N_points = config
 
@@ -133,14 +133,14 @@ function loss_function(input, NN, Θ, st, temp_state, config)
 	# Calculate loss
     ls, ls_max = calculate_individual_losses(q, μ, r_eq, θ_eq, ϕ_eq, ∇B, B∇α, B_mag, loss_normalization, N_points)
 
-    temp_state[:individual_losses] = ls
-    temp_state[:Linf_norm] = sum(ls_max)
-    temp_state[:individual_Linf_norms] = ls_max
+    # temp_state[:individual_losses] = ls
+    # temp_state[:Linf_norm] = sum(ls_max)
+    # temp_state[:individual_Linf_norms] = ls_max
     
     return loss_g(sum(ls))
 end
 
-function callback(p, l, prog, invH, temp_state, traindata, config)
+function callback(p, l, prog, invH, losses, config)
 
     @unpack loss_g = config
 
@@ -149,10 +149,11 @@ function callback(p, l, prog, invH, temp_state, traindata, config)
 		l = exp(l)
 	end
 
-    push!(traindata[:losses], l)
-    push!(traindata[:individual_losses], temp_state[:individual_losses])
-    push!(traindata[:Linf_norm], temp_state[:Linf_norm])
-    push!(traindata[:individual_Linf_norms], temp_state[:individual_Linf_norms])
+    push!(losses, l)
+    # push!(traindata[:losses], l)
+    # push!(traindata[:individual_losses], temp_state[:individual_losses])
+    # push!(traindata[:Linf_norm], temp_state[:Linf_norm])
+    # push!(traindata[:individual_Linf_norms], temp_state[:individual_Linf_norms])
 
 	# Store the last inverse Hessian (only in the quasi-Newton stage)
 	if "~inv(H)" ∈ keys(p.original.metadata)
@@ -160,65 +161,77 @@ function callback(p, l, prog, invH, temp_state, traindata, config)
 	end
 
 	# Update progress bar
-	next!(prog, showvalues=[(:iteration, @sprintf("%d", length(traindata[:losses]))) (:Loss, @sprintf("%.4e", l))])
+	next!(prog, showvalues=[(:iteration, @sprintf("%d", length(losses))) (:Loss, @sprintf("%.4e", l))])
 	flush(stdout)
 	
 	return false
 end
 
 function setup_optprob(NN, Θ, st, config)
-    temp_state = OrderedDict{Symbol, Any}()
+    # temp_state = OrderedDict{Symbol, Any}()
 
 	input = generate_input(config)
-	optf = Optimization.OptimizationFunction((Θ, input) -> loss_function(input, NN, Θ, st, temp_state, config), 
+	optf = Optimization.OptimizationFunction((Θ, input) -> loss_function(input, NN, Θ, st, config), 
         Optimization.AutoZygote())
 	optprob = Optimization.OptimizationProblem(optf, Θ, input)
 	optresult = Optimization.solve(optprob, Adam(), maxiters = 1)
 
-	return optresult, optprob, temp_state
+	return optresult, optprob#, temp_state
 end
- 
 
-function train_pinn!(optresult, optprob, temp_state, config)
+struct TrainData
+    losses::Vector{Float64}
+    Θ::AbstractArray
+    start_time::Any
+    duration::Float64
+    duration_readable::String
+end
+
+function setup_optimizer(i, initial_invH, config)
+
+    @unpack adam_sets, adam_iters, quasiNewton_method, quasiNewton_iters, linesearch = config
+
+    # Set up the optimizer. Adam for the initial stage, then switch to quasi-Newton
+    if i <= adam_sets
+        optimizer=Adam()
+        maxiters = adam_iters
+    else
+        if quasiNewton_method == "BFGS"
+            optimizer=BFGS(linesearch=linesearch, initial_invH=initial_invH)
+        elseif quasiNewton_method == "SSBFGS"
+            optimizer=SSBFGS(linesearch=linesearch, initial_invH=initial_invH)
+        elseif quasiNewton_method == "SSBroyden"
+            optimizer=SSBroyden(linesearch=linesearch, initial_invH=initial_invH)
+        end
+
+        maxiters = quasiNewton_iters
+    end
+
+    return optimizer, maxiters
+
+end
+
+function train_pinn!(optresult, optprob, config)
     start_time = now()
 
-    @unpack N_sets, adam_sets, adam_iters, quasiNewton_method, quasiNewton_iters, linesearch, subjobdir = config
+    @unpack N_sets, subjobdir, adam_sets = config
     
-    traindata = OrderedDict{Symbol, Any}()
-    traindata[:losses] = Float64[]
-    traindata[:individual_losses] = Vector{Float64}[]
-    traindata[:Linf_norm] = Float64[]
-    traindata[:individual_Linf_norms] = Vector{Float64}[]
-
-    invH = Base.RefValue{AbstractArray{Float64, 2}}()
+    losses = Float64[]
+    # traindata[:losses] = Float64[]
+    # traindata[:individual_losses] = Vector{Float64}[]
+    # traindata[:Linf_norm] = Float64[]
+    # traindata[:individual_Linf_norms] = Vector{Float64}[]
 
 	# Initialise the inverse Hessian
+    invH = Base.RefValue{AbstractArray{Float64, 2}}()
 	initial_invH = nothing   
 
 	for i in 1:N_sets
 		
-		# Set up the optimizer. Adam for the initial stage, then switch to quasi-Newton
-		if i <= adam_sets
-			optimizer=OptimizationOptimJL.Adam()
-			opt_label = "Adam"
-			maxiters = adam_iters
-		else
-			if quasiNewton_method == "BFGS"
-				optimizer=BFGS(linesearch=linesearch, initial_invH=initial_invH)
-				opt_label = "BFGS"
-			elseif quasiNewton_method == "SSBFGS"
-				optimizer=SSBFGS(linesearch=linesearch, initial_invH=initial_invH)
-				opt_label = "SSBFGS"
-			elseif quasiNewton_method == "SSBroyden"
-				optimizer=SSBroyden(linesearch=linesearch, initial_invH=initial_invH)
-				opt_label = "SSBroyden"
-			end
-
-			maxiters = quasiNewton_iters
-		end
+        optimizer, maxiters = setup_optimizer(i, initial_invH, config)
 
 		# Set up the progress bar
-		prog = Progress(maxiters, desc="Set $i/$(N_sets) $opt_label", dt=0.1, showspeed=true, start=1) 
+		prog = Progress(maxiters, desc="Set $i/$(N_sets)", dt=0.1, showspeed=true, start=1) 
 		
 		# Train
 		input = generate_input(config)
@@ -226,7 +239,7 @@ function train_pinn!(optresult, optprob, temp_state, config)
 		optresult = Optimization.solve(
             optprob,
             optimizer,
-            callback = (p, l) -> callback(p, l, prog, invH, temp_state, traindata, config),
+            callback = (p, l) -> callback(p, l, prog, invH, losses, config),
             maxiters = maxiters,
             extended_trace = true
         )
@@ -238,19 +251,24 @@ function train_pinn!(optresult, optprob, temp_state, config)
 			initial_invH = begin x -> invH[] end
 		end
 
-        duration = now()-start_time
+        _duration = now()-start_time
 
         # Store results (losses and other data are stored inside the callback function)
-        traindata[:Θ] = optresult.u |> Lux.cpu_device()
-        traindata[:start_time] = start_time
-        traindata[:duration] = duration / Millisecond(1000)
-        traindata[:duration_readable] = Dates.format(convert(DateTime, duration), "HH:MM:SS")
+        Θ = optresult.u |> Lux.cpu_device()
+        # start_time = start_time
+        duration = _duration / Millisecond(1000)
+        duration_readable = Dates.format(convert(DateTime, _duration), "HH:MM:SS")
+
+        # traindata[:Θ] = optresult.u |> Lux.cpu_device()
+        # traindata[:start_time] = start_time
+        # traindata[:duration] = duration / Millisecond(1000)
+        # traindata[:duration_readable] = Dates.format(convert(DateTime, duration), "HH:MM:SS")
+
+        traindata = TrainData(losses, Θ, start_time, duration, duration_readable)
 
         wsave(joinpath(subjobdir, "traindata.jld2"), "data", traindata)
 
 	end
-   
-	return traindata
 end
 
 function main(config)
@@ -259,11 +277,10 @@ function main(config)
     NN, Θ, st = create_neural_network(config)
 
     @info "Setting up optimization problem"
-    optresult, optprob, temp_state = setup_optprob(NN, Θ, st, config)
+    optresult, optprob = setup_optprob(NN, Θ, st, config)
 
     @info "Training neural network"
 
-    traindata = train_pinn!(optresult, optprob, temp_state, config)
+    train_pinn!(optresult, optprob, config)
 
-    return traindata
 end

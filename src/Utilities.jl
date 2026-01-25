@@ -21,6 +21,11 @@ function setup_jobdir(config)
         pprintln(io, config)
     end
 
+    # Write to a temporary file for slurm script to read
+    open("/tmp/julia_dir_name", "w") do file
+        write(file, jobdir)
+    end
+
     return jobdir
 end
 
