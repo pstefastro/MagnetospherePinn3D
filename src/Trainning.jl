@@ -26,7 +26,6 @@ function create_neural_network(config; test_mode=false)
 	
     # Create neural network. Separate subnetworks for each output
 	subnetworks = [create_subnet(N_input, N_neurons, N_layers, tanh) for _ in 1:N_output]
-    # NN = Chain(Parallel(vcat, subnetworks...))
     NN = Parallel(vcat, subnetworks...)
     Θ, st = Lux.setup(rng, NN)
     if test_mode
@@ -132,10 +131,6 @@ function loss_function(input, NN, Θ, st, config)
 
 	# Calculate loss
     ls, ls_max = calculate_individual_losses(q, μ, r_eq, θ_eq, ϕ_eq, ∇B, B∇α, B_mag, loss_normalization, N_points)
-
-    # temp_state[:individual_losses] = ls
-    # temp_state[:Linf_norm] = sum(ls_max)
-    # temp_state[:individual_Linf_norms] = ls_max
     
     return loss_g(sum(ls))
 end
@@ -150,10 +145,6 @@ function callback(p, l, prog, invH, losses, config)
 	end
 
     push!(losses, l)
-    # push!(traindata[:losses], l)
-    # push!(traindata[:individual_losses], temp_state[:individual_losses])
-    # push!(traindata[:Linf_norm], temp_state[:Linf_norm])
-    # push!(traindata[:individual_Linf_norms], temp_state[:individual_Linf_norms])
 
 	# Store the last inverse Hessian (only in the quasi-Newton stage)
 	if "~inv(H)" ∈ keys(p.original.metadata)
@@ -168,7 +159,6 @@ function callback(p, l, prog, invH, losses, config)
 end
 
 function setup_optprob(NN, Θ, st, config)
-    # temp_state = OrderedDict{Symbol, Any}()
 
 	input = generate_input(config)
 	optf = Optimization.OptimizationFunction((Θ, input) -> loss_function(input, NN, Θ, st, config), 
@@ -176,7 +166,7 @@ function setup_optprob(NN, Θ, st, config)
 	optprob = Optimization.OptimizationProblem(optf, Θ, input)
 	optresult = Optimization.solve(optprob, Adam(), maxiters = 1)
 
-	return optresult, optprob#, temp_state
+	return optresult, optprob
 end
 
 struct TrainData
@@ -217,10 +207,6 @@ function train_pinn!(optresult, optprob, config)
     @unpack N_sets, subjobdir, adam_sets = config
     
     losses = Float64[]
-    # traindata[:losses] = Float64[]
-    # traindata[:individual_losses] = Vector{Float64}[]
-    # traindata[:Linf_norm] = Float64[]
-    # traindata[:individual_Linf_norms] = Vector{Float64}[]
 
 	# Initialise the inverse Hessian
     invH = Base.RefValue{AbstractArray{Float64, 2}}()
@@ -255,14 +241,8 @@ function train_pinn!(optresult, optprob, config)
 
         # Store results (losses and other data are stored inside the callback function)
         Θ = optresult.u |> Lux.cpu_device()
-        # start_time = start_time
         duration = _duration / Millisecond(1000)
         duration_readable = Dates.format(convert(DateTime, _duration), "HH:MM:SS")
-
-        # traindata[:Θ] = optresult.u |> Lux.cpu_device()
-        # traindata[:start_time] = start_time
-        # traindata[:duration] = duration / Millisecond(1000)
-        # traindata[:duration_readable] = Dates.format(convert(DateTime, duration), "HH:MM:SS")
 
         traindata = TrainData(losses, Θ, start_time, duration, duration_readable)
 

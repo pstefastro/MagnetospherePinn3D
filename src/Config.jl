@@ -6,7 +6,7 @@ function create_config()
     # ---------------------------------------------------------------------------- #
     :N_input => 4,
     :N_layers => 2,
-    :N_neurons => 20,
+    :N_neurons => 40,
     :N_output => 4,
     :N_points => 20000,
     :q_distribution => Uniform(0, 1),        # Uniform(0, 1) or Beta(3, 1)
@@ -14,11 +14,11 @@ function create_config()
     # ---------------------------------------------------------------------------- #
     #                    Parameters for the optimization process                   #
     # ---------------------------------------------------------------------------- #
-    :N_sets => 3,
+    :N_sets => 10,
     :adam_sets => 2,
-    :adam_iters => 500,
+    :adam_iters => 1000,
     :quasiNewton_method => "SSBroyden",      # "SSBroyden", "SSBFGS", "BFGS"
-    :quasiNewton_iters => 500,
+    :quasiNewton_iters => 1000,
     :linesearch => BackTracking(),           # HagerZhang() or MoreThuente() or BackTracking() or StrongWolfe()
     :loss_g => identity,                     # identity or log. Function to apply to the MSE loss function
     :loss_normalization => "B",              # "q", "B", "none"
@@ -29,7 +29,7 @@ function create_config()
     # ---------------------------------------------------------------------------- #
     :α_bc_mode => "hotspot",                # "hotspot", "double-hotspot", "axisymmetric"
     :multipole_bl => [[1.0, 0.0, 0.0]],     # Coefficients of the magnetic multipoles
-    :compactness => 0.17,                   # Stellar compactness M/R. compactness = 0.0 for newtonian limit.
+    :compactness => 0.0,                   # Stellar compactness M/R. compactness = 0.0 for newtonian limit.
     :α0 => @onlyif(:α_bc_mode == "hotspot", 1.5),
     :θ1 => @onlyif(:α_bc_mode == "hotspot", 45.0),
     :ϕ1 => @onlyif(:α_bc_mode == "hotspot", 180.0),

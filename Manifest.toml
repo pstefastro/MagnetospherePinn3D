@@ -2161,7 +2161,9 @@ version = "0.5.6+0"
 
 [[deps.Optim]]
 deps = ["Compat", "EnumX", "FillArrays", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
-path = "dev/Optim"
+git-tree-sha1 = "4fb12aced2c953491a9b73b6ad20a46c99f10828"
+repo-rev = "master"
+repo-url = "https://github.com/pstefastro/Optim.jl.git"
 uuid = "429524aa-4258-5aef-a3af-852621145aeb"
 version = "1.13.2"
 
@@ -3561,7 +3563,7 @@ uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
 version = "1.52.0+1"
 
 [[deps.oneTBB_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
 git-tree-sha1 = "d5a767a3bb77135a99e433afe0eb14cd7f6914c3"
 uuid = "1317d2d5-d96f-522e-a858-c73665f53c3e"
 version = "2022.0.0+0"
