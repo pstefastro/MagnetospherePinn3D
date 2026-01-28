@@ -9,8 +9,8 @@ include("Plotting.jl")
 include("PostProcess.jl")
 
 jobdirs = sort(filter(dir -> isdir(dir), readdir(datadir(); join=true, sort=false)), lt=natural)
-# jobdir = jobdirs[end]
-jobdir = datadir("cluster_2026-01-26T16:00:26.619")
+jobdir = jobdirs[end]
+# jobdir = datadir("replace with the actual data directory path")
 
 config = NamedTuple(load(joinpath(jobdir, "config.jld2"), "data"))
 NN, _, st = create_neural_network(config, test_mode=true)
