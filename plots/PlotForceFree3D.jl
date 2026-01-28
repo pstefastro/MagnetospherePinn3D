@@ -10,9 +10,11 @@ using DrWatson
 include("Plotting.jl")
 include("PostProcess.jl")
 
+# jobdir = datadir("sequence_alphamax_axisymmetric/")
+# subjobdirs = sort(filter(dir -> isdir(dir), readdir(abspath(jobdir); join=true, sort=false)), lt=natural)
+# subjobdir = subjobdirs[32]
+
 jobdir = datadir("sequence_alphamax_axisymmetric/")
-subjobdirs = sort(filter(dir -> isdir(dir), readdir(abspath(jobdir); join=true, sort=false)), lt=natural)
-subjobdir = subjobdirs[32]
 
 config = NamedTuple(load(joinpath(subjobdir, "config.jld2"), "data"))
 NN, _, st = create_neural_network(config, test_mode=true)
